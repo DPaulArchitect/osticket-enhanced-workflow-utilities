@@ -233,11 +233,12 @@ extends VerySimpleModel {
         return $row ? $row[0] : null;
     }
 
-    static function getCannedResponses($deptId=0, $explicit=false) {
+    static function getCannedResponses($deptId=0, $explicit=false, $is_external) {
         global $thisstaff;
 
         $canned = static::objects()
-            ->filter(array('isenabled' => true))
+            ->filter(array('isenabled' => true, 'is_external' => $is_external))
+            
             ->order_by('title')
             ->values_flat('canned_id', 'title');
 
@@ -259,17 +260,18 @@ extends VerySimpleModel {
 
         $responses = array();
         foreach ($canned as $row) {
-            list($id, $title) = $row;
+            list($id, $title, $is_external) = $row;
             $responses[$id] = $title;
         }
 
         return $responses;
     }
-
-    static function responsesByDeptId($deptId, $explicit=false) {
-        return self::getCannedResponses($deptId, $explicit);
+    
+    static function responsesByDeptId($deptId, $explicit=false, $is_external) {
+        return self::getCannedResponses($deptId, $explicit, $is_external);
     }
 
+       
     function save($refetch=false) {
         if ($this->dirty || $refetch)
             $this->updated = SqlFunction::NOW();
