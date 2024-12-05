@@ -1019,7 +1019,7 @@ if ($errors['err'] && isset($_POST['a'])) {
                         <option value='original'><?php echo __('Original Message'); ?></option>
                         <option value='lastmessage'><?php echo __('Last Message'); ?></option>
                         <?php
-                        if(($cannedResponses=Canned::responsesByDeptId($ticket->getDeptId()))) {
+                        if(($cannedResponses=Canned::responsesByDeptId($ticket->getDeptId(), null, 0 ))) {
                             echo '<option value="0" disabled="disabled">
                                 ------------- '.__('Premade Replies').' ------------- </option>';
                             foreach($cannedResponses as $id =>$title)
@@ -1144,7 +1144,7 @@ if ($errors['err'] && isset($_POST['a'])) {
         <input type="hidden" name="locktime" value="<?php echo $cfg->getLockTime() * 60; ?>">
         <input type="hidden" name="a" value="postnote">
         <input type="hidden" name="lockCode" value="<?php echo $mylock ? $mylock->getCode() : ''; ?>">
-        <tr width="100%" border="0" cellspacing="0" cellpadding="3">
+        <table width="100%" border="0" cellspacing="0" cellpadding="3">
             <?php
             if($errors['postnote']) {?>
             <tr>
@@ -1153,11 +1153,10 @@ if ($errors['err'] && isset($_POST['a'])) {
             </tr>
             <?php
             } ?>
-        <tr>    
+            <tr>
                 <td width="120" style="vertical-align:top">
                     <label><strong><?php echo __('Internal Note'); ?>:</strong><span class='error'>&nbsp;*</span></label>
                 </td>
-                
                 <td>
                     <div>
                         <div class="faded" style="padding-left:0.15em"><?php
@@ -1166,42 +1165,40 @@ if ($errors['err'] && isset($_POST['a'])) {
                         <br/>
                         <span class="error">&nbsp;<?php echo $errors['title']; ?></span>
                     </div>
-
-                </td>
-                    
+                </td></tr>
+            <tr>
                 <td width="120" style="vertical-align">
-                    <label><strong><?php echo __('Canned Resonse'); ?>:</strong><span class='error'>&nbsp;*</span></label>
+                    <label><strong><?php echo __('Response'); ?>:</strong><span class='error'>&nbsp;*</span></label>
                 </td>
-                <td width="120" style="vertical-align">
-                    
-                    <select id="cannedResp" name="cannedResp">
+                <td>              
+                    <div>
+                    <select id="cannedResp2" name="cannedResp2" onchange="fetchResponse()">
                         <option value="0" selected="selected"><?php echo __('Select a canned response');?></option>
                         <option value='original'><?php echo __('Original Message'); ?></option>
                         <option value='lastmessage'><?php echo __('Last Message'); ?></option>
                         <?php
-                        if(($cannedResponses=Canned::responsesByDeptId($ticket->getDeptId()))) {
-                            echo '<option value="0" disabled="disabled">
+                            if(($cannedResponses=Canned::responsesByDeptId($ticket->getDeptId(), null, 1))) {
+                                echo '<option value="0" disabled="disabled">
                                 ------------- '.__('Premade Replies').' ------------- </option>';
-                            foreach($cannedResponses as $id =>$title)
+                            foreach($cannedResponses as $id =>$title) 
+                            
                                 echo sprintf('<option value="%d">%s</option>',$id,$title);
+                            
                         }
                         ?>
                     </select>
-                    
-                </td>
-        </tr>    
-                
-                
-            <td colspan="2">
+                    </div>
+                    </td>
+                </tr>
+                <tr><td colspan="2">
                     <div class="error"><?php echo $errors['note']; ?></div>
                     <textarea name="note" id="internal_note" cols="80"
                         placeholder="<?php echo __('Note details'); ?>"
-                        rows="9" wrap="soft"
-                        class="<?php if ($cfg->isRichTextEnabled()) echo 'richtext';
-                            ?> draft draft-delete fullscreen" <?php
+                        rows="9" wrap="soft" class=<?php
     list($draft, $attrs) = Draft::getDraftAndDataAttrs('ticket.note', $ticket->getId(), $info['note']);
     echo $attrs; ?>><?php echo ThreadEntryBody::clean($_POST ? $info['note'] : $draft);
-                        ?></textarea>
+                    ?> 
+                            </textarea>
                 <div class="attachments">
                 <?php
                     print $note_form->getField('attachments')->render();
@@ -1246,6 +1243,38 @@ if ($errors['err'] && isset($_POST['a'])) {
            <input class="" type="reset" value="<?php echo __('Reset');?>">
        </p>
    </form>
+   
+   <script type="text/javascript"> 
+        $('#cannedResp2').prop('disabled', true);
+
+        $(document).ready(function() {
+            $('#cannedResp2').prop('disabled', false);
+            $('#cannedResp2').on('change', async function() {
+                const selectedValue = $(this).val();
+
+                if (selectedValue) {
+                    try {
+                        const response = await $.ajax({
+                            url: 'ajax.php/tickets/2/canned-resp/' + selectedValue + '.json',
+                            type: 'GET',
+                        });
+
+                        // Remove HTML tags from the response text
+                        const plainText = $('<div/>').html(response.response).text();
+
+                        $('#internal_note').val(plainText);
+                    } catch (error) {
+                        console.error("Error fetching canned response:", error);
+                        $('#internal_note').val('An error occurred while fetching the canned response.');
+                    }
+                } else {
+                    $('#internal_note').val('');
+                }
+            });
+        });
+                   
+            
+    </script>
    <?php } ?>
  </div>
  </div>
@@ -1465,9 +1494,19 @@ $(function() {
     $(this).parent().find('.select2-search__field').prop('disabled', true);
    });
 });
+
 function saveDraft() {
-    redactor = $('#response').redactor('plugin.draft');
-    if (redactor.opts.draftId)
+    //save draft for internal note
+    internalNoteRedactor = $('#internal_note').redactor('plugin.draft');
+    if (internalNoteRedactor.opts.draftId) {
+        $('#internal_note').redactor('plugin.draft.saveDraft');
+    }
+
+    //save draft for response
+    responseRedactor = $('#response').redactor('plugin.draft');
+    if (responseRedactor.opts.draftId) {
         $('#response').redactor('plugin.draft.saveDraft');
+    }
 }
 </script>
+
