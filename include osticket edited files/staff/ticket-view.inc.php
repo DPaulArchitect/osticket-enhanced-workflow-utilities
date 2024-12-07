@@ -1019,7 +1019,7 @@ if ($errors['err'] && isset($_POST['a'])) {
                         <option value='original'><?php echo __('Original Message'); ?></option>
                         <option value='lastmessage'><?php echo __('Last Message'); ?></option>
                         <?php
-                        if(($cannedResponses=Canned::responsesByDeptId($ticket->getDeptId(), null, 0 ))) {
+                        if(($cannedResponses=Canned::responsesByDeptId($ticket->getDeptId(), null, [1,3] ))) {
                             echo '<option value="0" disabled="disabled">
                                 ------------- '.__('Premade Replies').' ------------- </option>';
                             foreach($cannedResponses as $id =>$title)
@@ -1170,43 +1170,67 @@ if ($errors['err'] && isset($_POST['a'])) {
                 <td width="120" style="vertical-align">
                     <label><strong><?php echo __('Response'); ?>:</strong><span class='error'>&nbsp;*</span></label>
                 </td>
-                <td>              
+                
+                <td>
+                <?php
+                if ($errors['internal_note'])
+                    echo sprintf('<div class="error">%s</div>',
+                            $errors['internal_note']);
+
+                if ($cfg->isCannedResponseEnabled()) { ?>              
                     <div>
-                    <select id="cannedResp2" name="cannedResp2" onchange="fetchResponse()">
+                    <select id="cannedResp2" name="cannedResp2" >
                         <option value="0" selected="selected"><?php echo __('Select a canned response');?></option>
                         <option value='original'><?php echo __('Original Message'); ?></option>
                         <option value='lastmessage'><?php echo __('Last Message'); ?></option>
                         <?php
-                            if(($cannedResponses=Canned::responsesByDeptId($ticket->getDeptId(), null, 1))) {
-                                echo '<option value="0" disabled="disabled">
+                        if(($cannedResponses=Canned::responsesByDeptId($ticket->getDeptId(), null, [0,3] ))) {
+                            echo '<option value="0" disabled="disabled">
                                 ------------- '.__('Premade Replies').' ------------- </option>';
-                            foreach($cannedResponses as $id =>$title) 
-                            
+                            foreach($cannedResponses as $id =>$title)
                                 echo sprintf('<option value="%d">%s</option>',$id,$title);
-                            
                         }
                         ?>
                     </select>
                     </div>
                     </td>
                 </tr>
-                <tr><td colspan="2">
-                    <div class="error"><?php echo $errors['note']; ?></div>
-                    <textarea name="note" id="internal_note" cols="80"
+            <td colspan="2">
+                <?php } # endif (canned-resonse-enabled)
+                    $signature = '';
+                    switch ($thisstaff->getDefaultSignatureType()) {
+                    case 'dept':
+                        if ($dept && $dept->canAppendSignature())
+                           $signature = $dept->getSignature();
+                       break;
+                    case 'mine':
+                        $signature = $thisstaff->getSignature();
+                        break;
+                    } ?>
+                    <input type="hidden" name="draft_id" value=""/>
+                    <br/>
+                <tr>
+                    <td colspan="2">
+                        <div class="error"><?php echo $errors['note']; ?></div>
+
+                        <textarea name="note" id="internal_note" cols="80"
                         placeholder="<?php echo __('Note details'); ?>"
-                        rows="9" wrap="soft" class=<?php
-    list($draft, $attrs) = Draft::getDraftAndDataAttrs('ticket.note', $ticket->getId(), $info['note']);
-    echo $attrs; ?>><?php echo ThreadEntryBody::clean($_POST ? $info['note'] : $draft);
-                    ?> 
-                            </textarea>
-                <div class="attachments">
-                <?php
-                    print $note_form->getField('attachments')->render();
-                ?>
-                </div>
-                </td>
-            </tr>
-            <tr><td colspan="2">&nbsp;</td></tr>
+                        rows="9" wrap="soft" class="<?php if ($cfg->isRichTextEnabled()) echo 'richtext';
+                            ?> draft draft-delete fullscreen" <?php
+                        list($draft, $attrs) = Draft::getDraftAndDataAttrs('ticket.note', $ticket->getId(), $info['note']);
+                        echo $attrs; ?>><?php echo ThreadEntryBody::clean($_POST ? $info['note'] : $draft);
+                        ?> 
+                        </textarea>
+
+                        <div class="attachments">
+                        <?php
+                        print $note_form->getField('attachments')->render();
+                        ?>
+                        </div>
+                    </td>
+                </tr>
+            
+                <tr><td colspan="2">&nbsp;</td></tr>
             <tr>
                 <td width="120">
                     <label><?php echo __('Ticket Status');?>:</label>
@@ -1244,37 +1268,44 @@ if ($errors['err'] && isset($_POST['a'])) {
        </p>
    </form>
    
-   <script type="text/javascript"> 
-        $('#cannedResp2').prop('disabled', true);
-
+   <script>
+    
         $(document).ready(function() {
-            $('#cannedResp2').prop('disabled', false);
-            $('#cannedResp2').on('change', async function() {
-                const selectedValue = $(this).val();
+        $('#cannedResp2').on('change', function() {
+            var cannedResponseId = $(this).val();
 
-                if (selectedValue) {
-                    try {
-                        const response = await $.ajax({
-                            url: 'ajax.php/tickets/2/canned-resp/' + selectedValue + '.json',
-                            type: 'GET',
-                        });
+            $.ajax({
+                url: '/ajax.php/tickets/'$ticket->getId()'/cannedResp/',
+                type: 'POST',
+                data: {
+                    canned_response_id: cannedResponseId
+                },
+                success: function(response) {
+                    var cannedResponseHtml = response.html;
+                    
+                    let app = Redactor('#note');
 
-                        // Remove HTML tags from the response text
-                        const plainText = $('<div/>').html(response.response).text();
+                    // insert content from outside scripts
+                    app.editor.insertContent({ html: cannedResponseHtml });
 
-                        $('#internal_note').val(plainText);
-                    } catch (error) {
-                        console.error("Error fetching canned response:", error);
-                        $('#internal_note').val('An error occurred while fetching the canned response.');
-                    }
-                } else {
-                    $('#internal_note').val('');
+                    // insert content in the plugin method
+                    this.app.editor.insertContent({ html: cannedResponseHtml });
+                    
+                    // Assuming Redactor's API:
+                //    $('#note').redactor('set', cannedResponseHtml);
+                    //$('#note').redactor('insertHtml', cannedResponseHtml);
+                 //   $('#note').redactor('sync');
+                    
+                    // Alternatively, if you need to set the entire content:
+                    //$('#note').redactor('set', cannedResponseHtml);
+                 //   $('#note').wait('change')
                 }
             });
         });
-                   
-            
-    </script>
+    });
+
+
+</script>
    <?php } ?>
  </div>
  </div>
@@ -1496,12 +1527,11 @@ $(function() {
 });
 
 function saveDraft() {
-    //save draft for internal note
-    internalNoteRedactor = $('#internal_note').redactor('plugin.draft');
-    if (internalNoteRedactor.opts.draftId) {
-        $('#internal_note').redactor('plugin.draft.saveDraft');
+ 
+    noteRedactor = $('#note').redactor('plugin.draft');
+    if (noteRedactor.opts.draftId) {
+        $('#note').redactor('plugin.draft.saveDraft');
     }
-
     //save draft for response
     responseRedactor = $('#response').redactor('plugin.draft');
     if (responseRedactor.opts.draftId) {
