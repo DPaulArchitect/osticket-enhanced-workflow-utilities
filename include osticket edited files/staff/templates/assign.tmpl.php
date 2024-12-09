@@ -30,7 +30,7 @@ $action = $info[':action'] ?: ('#');
     name="assign"
     id="<?php echo $form->getFormId(); ?>"
     action="<?php echo $action; ?>">
-    <table width="100%">
+    <table id="'assignForm1" width="100%">
         <?php
         if ($info[':extra']) {
             ?>
@@ -50,7 +50,7 @@ $action = $info[':action'] ?: ('#');
             </td> </tr>
         </tbody>
     </table>
-    <td>
+    <td><div id="'cannedRespAssign1">
                 <?php
                 if ($errors['assign'])
                     echo sprintf('<div class="error">%s</div>',
@@ -58,7 +58,7 @@ $action = $info[':action'] ?: ('#');
 
                 if ($cfg->isCannedResponseEnabled()) { ?>
                   <div>
-                    <label aligntop><strong>Canned Responses:</strong></label>
+                    <label aligntop><strong>Canned Responses:</strong></label><br>
                     <select id="cannedRespAssign" label="Canned Response" name="cannedRespAssign">
                         <option value="0" selected="selected"><?php echo __('Select a canned response');?></option>
                         <option value='original'><?php echo __('Original Message'); ?></option>
@@ -74,7 +74,7 @@ $action = $info[':action'] ?: ('#');
                     </select>
                     </div>
                     </td></tr>
-                    <tr><td colspan="2">
+                    <td><td colspan="2">
                 <?php } # endif (canned-resonse-enabled)
                     $signature = '';
                     switch ($thisstaff->getDefaultSignatureType()) {
@@ -86,6 +86,8 @@ $action = $info[':action'] ?: ('#');
                         $signature = $thisstaff->getSignature();
                         break;
                     } ?>
+                    </td>
+            </div>            
     <hr>
     <p class="full-width">
         <span class="buttons pull-left">
@@ -152,6 +154,24 @@ $action = $info[':action'] ?: ('#');
     });
 
 
+$(document).ready(function() {
+    async function waitForElement(selector) {
+        return new Promise((resolve) => {
+            const interval = setInterval(() => {
+                if ($(selector).length) {
+                    clearInterval(interval);
+                    resolve($(selector));
+                }
+            }, 100); // Check every 100 milliseconds
+        });
+    }
+
+    (async function() {
+        const redactorEditor = await waitForElement('.redactor-box'); // Redactor's container class
+        const selectBlock = $('#cannedRespAssign').closest('div'); // Get the closest parent div of the select
+        selectBlock.insertBefore(redactorEditor.closest('div')); // Move the select block above the Redactor editor
+    })();
+});
 
 
 </script>

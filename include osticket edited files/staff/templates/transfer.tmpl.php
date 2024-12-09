@@ -53,7 +53,7 @@ $action = $info[':action'] ?: ('#');
 
                 if ($cfg->isCannedResponseEnabled()) { ?>
                   <div>
-                    <label aligntop><strong>Canned Responses:</strong></label>
+                    <label aligntop><strong>Canned Responses:</strong></label><br>
                     <select id="cannedRespTransfer" label="Canned Response" name="cannedRespTransfer">
                         <option value="0" selected="selected"><?php echo __('Select a canned response');?></option>
                         <option value='original'><?php echo __('Original Message'); ?></option>
@@ -146,5 +146,24 @@ $action = $info[':action'] ?: ('#');
             .fail(function() { });
            
     });
+
+$(document).ready(function() {
+    async function waitForElement(selector) {
+        return new Promise((resolve) => {
+            const interval = setInterval(() => {
+                if ($(selector).length) {
+                    clearInterval(interval);
+                    resolve($(selector));
+                }
+            }, 100); // Check every 100 milliseconds
+        });
+    }
+
+    (async function() {
+        const redactorEditor = await waitForElement('.redactor-box'); // Redactor's container class
+        const selectBlock = $('#cannedRespTransfer').closest('div'); // Get the closest parent div of the select
+        selectBlock.insertBefore(redactorEditor.closest('div')); // Move the select block above the Redactor editor
+    })();
+});
 
 </script>
