@@ -170,7 +170,7 @@ $action = $info[':action'] ?: ('#');
         $('#transferForm').on('submit', function(e) {
             e.preventDefault(); // Prevent the default form submission
 
-            // Perform any additional form submission logic here (e.g., AJAX submission)
+        
 
             // Refresh the page
             location.reload();
