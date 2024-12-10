@@ -53,12 +53,18 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info, true);
             </td>
         </tr>
         <tr>
-            <td width="180" class="required"><?php echo __('Is message "internal" or "external"');?></td>
+            <td width="360" class="required"><?php echo __('Is message internal, external or Transfer');?></td>
             <td>
                 <label><input type="radio" name="is_external" value="0" <?php
                     echo $info['is_external']?'checked="checked"':''; ?>>&nbsp;<?php echo __('Internal'); ?>&nbsp;</label>
                 <label><input type="radio" name="is_external" value="1" <?php
                         echo !$info['is_external']?'checked="checked"':''; ?>>&nbsp;<?php echo __('External'); ?>&nbsp;</label>
+                    <strong>Or..</strong>  
+                <label><input type="radio" name="is_external" value="3" <?php
+                        echo !$info['is_external']?'checked="checked"':''; ?>>&nbsp;<?php echo __('Both'); ?>&nbsp;</label>
+                <div width="15px"></div> 
+                <label><input type="radio" name="is_external" value="2" <?php
+                        echo !$info['is_external']?'checked="checked"':''; ?>>&nbsp;<?php echo __('Transfer'); ?>&nbsp;</label>
                 &nbsp;<span class="error">*&nbsp;<?php echo $errors['is_external']; ?></span>
             </td>
         </tr>
