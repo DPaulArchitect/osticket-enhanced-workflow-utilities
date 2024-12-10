@@ -173,14 +173,12 @@ $action = $info[':action'] ?: ('#');
         $('#assignForm').on('submit', function(e) {
             e.preventDefault(); // Prevent the default form submission
 
-            
+            // Perform any additional form submission logic here (e.g., AJAX submission)
 
             // Refresh the page
             location.reload();
         });
 
-        // Refresh the page if the popup is closed
-        window.onbeforeunload = function() {
-            return "Are you sure you want to leave?";
-        };
+        
+        
     </script>
