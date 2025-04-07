@@ -50,6 +50,6 @@ It may also be compatible with future minor releases within the v1.18 branch, bu
 
 ## Support
 
-For any questions, issues, or feedback regarding this Add-On / MOD, please [**Insert your preferred contact method here, e.g., contact the developer via [link/email address], open an issue on [repository link]**].
+For any questions, issues, or feedback regarding this Add-On / MOD, please open an issue on https://github.com/DPaulArchitect/osticket-enhanced-workflow-utilities.
 
 Thank you for using the Enhanced Workflow Utilities for osTicket!
