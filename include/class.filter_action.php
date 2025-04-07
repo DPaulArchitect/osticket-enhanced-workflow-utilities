@@ -755,9 +755,8 @@ class FA_MarkAnswered extends TriggerAction {
     static $name = /* @trans */ 'Set Ticket Answered';
 
     function apply(&$ticket, array $info) {
-        # TODO: Disable alerting
-        # XXX: Does this imply turning it on as well? (via ->sendAlerts())
-        $ticket['isanswered']=true;
+        // set flag to the ticket for the isanswered state.
+       $ticket['isanswered']=true;
     }
 
      /**
