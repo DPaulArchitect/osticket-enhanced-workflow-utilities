@@ -62,148 +62,172 @@ $action = $info[':action'] ?: ('#');
 </div>
 <div class="clear"></div>
 
+
 <script>
     $(document).ready(function() {
-        async function waitForElement(selector, context = document) {
-            return new Promise((resolve) => {
+        async function waitForElement(selector, context = document, timeout = 5000) {
+            return new Promise((resolve, reject) => {
+                let timer;
                 const interval = setInterval(() => {
                     const element = $(selector, context);
+                    console.log("waitForElement checking for:", selector, "found:", element.length > 0);
                     if (element.length) {
                         clearInterval(interval);
+                        clearTimeout(timer);
                         resolve(element);
                     }
                 }, 100);
+
+                timer = setTimeout(() => {
+                    clearInterval(interval);
+                    reject(new Error(`waitForElement timed out waiting for ${selector}`));
+                }, timeout);
             });
         }
 
         // Function to initialize the canned response select box within the transfer form
-        async function initializeCannedResponse(formElement) {
-            const redactorEditor = await waitForElement('.redactor-box', formElement);
+        async function initializeCannedResponseTransfer(formElement) {
+            console.log("initializeCannedResponseTransfer called with:", formElement);
 
-            // Remove any existing select block within this form
-            formElement.find('#cannedRespTransfer').closest('div').remove();
+            // Wait for the Redactor editor container (not the textarea directly)
+            try {
+                const redactorEditorContainer = await waitForElement('.redactor-box', formElement);
+                console.log("redactorEditorContainer:", redactorEditorContainer);
 
-            // Create and append the new select block
-            const selectBlockHtml = `
-                <div>
-                    <?php
-                    if ($errors['Transfer'])
-                        echo sprintf('<div class="error">%s</div>', $errors['Transfer']);
+                // Remove any existing select block within this form
+                formElement.find('#cannedRespTransfer').closest('div').remove();
 
-                    if ($cfg->isCannedResponseEnabled()) { ?>
-                    <label aligntop><strong>Canned Responses:</strong></label><br>
-                    <select id="cannedRespTransfer" name="cannedRespTransfer">
-                        <option value="0" selected="selected">Select a canned response</option>
-                        <option value="original">Original Message</option>
-                        <option value="lastmessage">Last Message</option>
+                // Create and append the new select block
+                const selectBlockHtml = `
+                    <div>
                         <?php
-                        if(($cannedResponses=Canned::responsesByDeptId($ticket->getDeptId(), null, [2] ))) {
-                            echo '<option value="0" disabled="disabled">
-                                ------------- '.__('Premade Replies').' ------------- </option>';
-                            foreach($cannedResponses as $id =>$title)
-                                echo sprintf('<option value="%d">%s</option>',$id,$title);
-                        }
-                                ?>  <?php } # endif (canned-resonse-enabled)
-                                        $signature = '';
-                                        switch ($thisstaff->getDefaultSignatureType()) {
-                                        case 'dept':
-                                            if ($dept && $dept->canAppendSignature())
-                                            $signature = $dept->getSignature();
-                                        break;
-                                        case 'mine':
-                                            $signature = $thisstaff->getSignature();
-                                        break;
-                                    } ?>
-                    </select>
-                </div>
-            `;
-            $(selectBlockHtml).insertBefore(redactorEditor.closest('div'));
+                        if ($errors['Transfer'])
+                            echo sprintf('<div class="error">%s</div>',
+                                            $errors['Transfer']);
 
-            // Initialize select2 for the new select block
-            formElement.find('select#cannedRespTransfer').select2({width: '350px'});
-            formElement.find('select#cannedRespTransfer').on('select2:opening', function(e) {
-                var redactor = $('.richtext', $(this).closest('form')).data('redactor');
-                if (redactor)
-                    redactor.api('selection.save');
-            });
+                        if ($cfg->isCannedResponseEnabled()) { ?>
+                        <label aligntop><strong>Canned Responses:</strong></label><br>
+                        <select id="cannedRespTransfer" name="cannedRespTransfer">
+                            <option value="0" selected="selected">Select a canned response</option>
+                            <option value="original">Original Message</option>
+                            <option value="lastmessage">Last Message</option>
+                            <?php
+                            if(($cannedResponses=Canned::responsesByDeptId($ticket->getDeptId(), null, [2] ))) {
+                                echo '<option value="0" disabled="disabled">
+                                    ------------- '.__('Premade Replies').' ------------- </option>';
+                                foreach($cannedResponses as $id =>$title)
+                                    echo sprintf('<option value="%d">%s</option>',$id,$title);
+                            }
+                                    ?>  <?php } # endif (canned-resonse-enabled)
+                                            $signature = '';
+                                            switch ($thisstaff->getDefaultSignatureType()) {
+                                            case 'dept':
+                                                if ($dept && $dept->canAppendSignature())
+                                                $signature = $dept->getSignature();
+                                            break;
+                                            case 'mine':
+                                                if ($dept && $dept->canAppendSignature())
+                                                $signature = $thisstaff->getSignature();
+                                            break;
+                                        } ?>
+                        </select>
+                    </div>
+                `;
+                $(selectBlockHtml).insertBefore(redactorEditorContainer.closest('div'));
 
-            formElement.find('select#cannedRespTransfer').change(function() {
-                var fObj = $(this).closest('form');
-                var cid = $(this).val();
-                var tid = $(':input[name=id]', fObj).val();
-                $(this).find('option:first').attr('selected', 'selected').parent('select');
+                // Initialize select2 for the new select block
+                formElement.find('select#cannedRespTransfer').select2({width: '350px'});
+                formElement.find('select#cannedRespTransfer').on('select2:opening', function(e) {
+                    var redactor = $('.richtext', $(this).closest('form')).data('redactor');
+                    if (redactor)
+                        redactor.api('selection.save');
+                });
 
-                var $url = 'ajax.php/kb/canned-response/' + cid + '.json';
-                if (tid)
-                    $url = 'ajax.php/tickets/' + tid + '/canned-resp/' + cid + '.json';
+                formElement.find('select#cannedRespTransfer').change(function() {
+                    var fObj = $(this).closest('form');
+                    var cid = $(this).val();
+                    var tid = $(':input[name=id]', fObj).val();
+                    $(this).find('option:first').attr('selected', 'selected').parent('select');
 
-                $.ajax({
-                    type: "GET",
-                    url: $url,
-                    dataType: 'json',
-                    cache: false,
-                    success: function(canned) {
-                        var box = formElement.find('#_comments', fObj), // Scope of form
-                            redactor = $R('#_comments.richtext', fObj); // Scope of form
-                        if (canned.response) {
-                            if (redactor) {
-                                redactor.api('selection.restore');
-                                redactor.insertion.insertHtml(canned.response);
-                            } else {
-                                box.val(box.val() + canned.response);
+                    var $url = 'ajax.php/kb/canned-response/' + cid + '.json';
+                    if (tid)
+                        $url = 'ajax.php/tickets/' + tid + '/canned-resp/' + cid + '.json';
+
+                    $.ajax({
+                        type: "GET",
+                        url: $url,
+                        dataType: 'json',
+                        cache: false,
+                        success: function(canned) {
+                            console.log("AJAX success:", canned);
+                            // Target the textarea using its classes
+                            var box = formElement.find('textarea.richtext.no-bar.small.redactor-source');
+                            console.log("TextArea element:", box);
+
+                            // Target Redactor using the editor container
+                            // Pass a STRING selector to $R()
+                            var redactor = $R('#' + formElement.find('textarea.richtext.no-bar.small.redactor-source').attr('id'));
+
+                            console.log("Redactor instance:", redactor);
+
+                            if (canned.response) {
+                                if (redactor) {
+                                    redactor.insertion.insertHtml(canned.response);
+                                } else {
+                                    box.val(canned.response);
+                                }
+                            }
+                            var ca = formElement.find('.attachments', fObj);
+                            if (canned.files && ca.length) {
+                                var fdb = ca.find('.dropzone').data('dropbox');
+                                $.each(canned.files, function(i, j) {
+                                    fdb.addNode(j);
+                                });
                             }
                         }
-                        var ca = formElement.find('.attachments', fObj); // Scope of form
-                        if (canned.files && ca.length) {
-                            var fdb = ca.find('.dropzone').data('dropbox'); // Scope of form
-                            $.each(canned.files, function(i, j) {
-                                fdb.addNode(j);
-                            });
-                        }
-                    }
-                }).done(function() {}).fail(function() {});
-            });
-        }
-
-        // Initialize the canned response select box when the transfer form is present within the #popup
-        async function initializeOnPopupLoad() {
-            const popupElement = await waitForElement('#popup');
-            if (popupElement.length) {
-                // Target the form using the 'is' attribute
-                const transferForm = popupElement.find('form[id="transfer"]');
-                if (transferForm.length) {
-                    await initializeCannedResponse(transferForm);
-                } else {
-                    console.log("Transfer form (with id='transfer') not found within #popup");
-                }
-            } else {
-                console.log("#popup element not found");
+                    }).done(function() {}).fail(function() {});
+                });
+            } catch (error) {
+                console.error("initializeCannedResponseTransfer error:", error);
             }
         }
-        initializeOnPopupLoad();
 
-        // Refresh the page upon form submission within the #popup
-        $(document).on('submit', '#popup form[id="transfer"]', function(e) {
+        // Initialize the canned response select box when the transfer form is present
+        async function initializeOnTransferLoad() {
+            console.log("initializeOnTransferLoad started");
+            try {
+                const transferForm = await waitForElement('#transfer');
+                console.log("initializeOnTransferLoad - transferForm found:", transferForm);
+                if (transferForm.length) {
+                    // Explicitly call initializeCannedResponseTransfer after waitForElement
+                    await initializeCannedResponseTransfer(transferForm);
+                } else {
+                    console.log("initializeOnTransferLoad - transferForm.length is 0");
+                }
+            } catch (error) {
+                console.error("initializeOnTransferLoad error:", error);
+            }
+        }
+        initializeOnTransferLoad();
+
+        // Refresh the page upon form submission
+        $(document).on('submit', '#transfer', function(e) {
             e.preventDefault();
             var form = $(this);
+            console.log("Form submission intercepted:", form);
             $.ajax({
                 url: form.attr('action'),
                 type: form.attr('method'),
                 data: form.serialize(),
                 success: function(response) {
-                    location.reload();
+                    console.log("AJAX success (form submission):", response);
+                    
                 },
                 error: function(xhr, status, error) {
-                    console.error("Form submission error:", error);
-                    location.reload();
+                    console.error("AJAX error (form submission):", error);
+                    
                 }
             });
-        });
-
-        // Refresh the page when the close button within the #popup is clicked
-        $(document).on('click', '#popup .close', function(e) {
-            e.preventDefault(); // Prevent the default link behavior
-            location.reload();
         });
     });
 </script>
