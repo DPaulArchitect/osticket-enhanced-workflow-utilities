@@ -138,7 +138,7 @@ else
                 <td><?php echo $row['department']?$row['department']:'&mdash; '.__('All Departments'); ?></td>
                 <td>&nbsp;<?php echo Format::datetime($row['updated']); ?></td>
                 <td>
-                    <?php if ($row['is_external'] === null): ?>
+                    <?php if ($row['is_external'] === '3'): ?>
                         Both
                     <?php elseif ($row['is_external'] === '0'): ?>
                         Internal
