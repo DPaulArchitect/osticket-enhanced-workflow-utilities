@@ -1,7 +1,7 @@
 # osTicket Add-On: Enhanced Workflow Utilities
 
 This add-on introduces two new features designed to streamline your osTicket workflow and improve agent efficiency. Installation is straightforward, requiring simple file replacements within your existing osTicket installation.
-You may run the upgrade script to add a column to the database using the upgrade feature of osticket or simply add the column to the database manually. in the ost_canned_response table a column name is_external is required.
+You may run the upgrade script to add a column to the database using the upgrade feature of osticket or simply add the column to the database manually. in the ost_canned_response table a column name is_external is required of type=>int length=>1.
 
 ## Features
 
